@@ -16,8 +16,8 @@ const parseDuration = (duration) => {
 };
 
 // Minimum duration in seconds to consider a video a "long video" (not a Short)
-// YouTube Shorts are ≤ 60s; we use 3 minutes (180s) as a strict safety threshold
-const MIN_LONG_VIDEO_SECONDS = 180;
+// YouTube Shorts are ≤ 60s; we require at least 2 minutes (120s) as per product requirement
+const MIN_LONG_VIDEO_SECONDS = 120;
 
 // Helper: Fetch full video details and filter out Shorts (< 3 minutes)
 const getFilteredVideos = async (videoIds, apiKey) => {
@@ -67,30 +67,32 @@ const getVideos = async (req, res) => {
 
   try {
     const channelId = RAAZ_E_BHARAT_CHANNEL_ID;
+    const pageToken = req.query.pageToken || '';
 
     // ===== Fetch latest LONG videos from channel =====
     // videoDuration=long tells YouTube API to pre-filter Shorts (≤ 60s) server-side
-    const searchResp = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-      params: {
-        part: 'id',
-        channelId: channelId,
-        type: 'video',
-        order: 'date',
-        videoDuration: 'long', // ← KEY FIX: excludes Shorts at the API level
-        maxResults: Math.min(maxResults + 20, 50), // Overfetch to compensate for any remaining edge cases
-        key: apiKey,
-      },
-    });
+    const searchParams = {
+      part: 'id',
+      channelId: channelId,
+      type: 'video',
+      order: 'date',
+      videoDuration: 'long',
+      maxResults: Math.min(maxResults + 10, 50),
+      key: apiKey,
+    };
+    if (pageToken) searchParams.pageToken = pageToken;
+
+    const searchResp = await axios.get('https://www.googleapis.com/youtube/v3/search', { params: searchParams });
 
     const videoIds = (searchResp.data.items || [])
       .map((item) => item.id?.videoId)
       .filter(Boolean);
 
     if (!videoIds.length) {
-      return res.json({ success: true, videos: [] });
+      return res.json({ success: true, videos: [], nextPageToken: null });
     }
 
-    // Get full details + filter shorts
+    // Get full details + filter by minimum duration
     const longVideos = await getFilteredVideos(videoIds, apiKey);
     const videos = longVideos.slice(0, maxResults);
 
@@ -98,6 +100,7 @@ const getVideos = async (req, res) => {
       success: true,
       videos,
       isMock: false,
+      nextPageToken: searchResp.data.nextPageToken || null,
       totalFound: videoIds.length,
       shortsFiltered: videoIds.length - longVideos.length,
       channelId,

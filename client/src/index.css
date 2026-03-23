@@ -47,7 +47,7 @@
   }
 
   .card {
-    @apply bg-dark-card border border-dark-border rounded-xl overflow-hidden transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5;
+    @apply bg-dark-card/80 backdrop-blur-xl border border-white/5 rounded-xl overflow-hidden transition-all duration-500 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1;
   }
 
   .badge {

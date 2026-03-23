@@ -37,7 +37,7 @@ const AdminLogin = () => {
 
       <div className="relative w-full max-w-md animate-slide-up">
         {/* Card */}
-        <div className="bg-dark-card border border-dark-border rounded-2xl p-8 shadow-2xl shadow-black/50">
+        <div className="bg-dark-card/80 backdrop-blur-2xl border border-white/10 rounded-2xl p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] hover:border-primary/30 transition-all duration-500">
           {/* Logo */}
           <div className="text-center mb-8">
             <img src="/logo.png" alt="Raaz-e-Bharat" className="w-20 h-20 rounded-full mx-auto mb-4 shadow-lg shadow-primary/30" />

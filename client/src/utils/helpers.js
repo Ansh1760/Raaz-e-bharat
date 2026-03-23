@@ -1,7 +1,7 @@
 /**
  * Returns the proper image URL for an article image.
  * - If it starts with http(s), return as-is (external URL)
- * - If it starts with /uploads/, prefix with backend API URL (works in both dev and prod)
+ * - If it starts with /uploads/, prefix with backend URL (Render in prod, proxy in dev)
  * - Otherwise return empty string
  */
 export const getImageUrl = (imagePath) => {
@@ -10,9 +10,11 @@ export const getImageUrl = (imagePath) => {
     return imagePath;
   }
   if (imagePath.startsWith('/uploads/')) {
-    // In development, Vite proxy handles this automatically at /uploads
-    // So we can just use the path as-is — the proxy forwards to localhost:5000
-    return imagePath;
+    // __BACKEND_URL__ is injected at build time by vite.config.js
+    const backendUrl = (typeof __BACKEND_URL__ !== 'undefined' && __BACKEND_URL__)
+      ? __BACKEND_URL__
+      : (import.meta.env.VITE_API_URL || '');
+    return `${backendUrl}${imagePath}`;
   }
   return imagePath;
 };

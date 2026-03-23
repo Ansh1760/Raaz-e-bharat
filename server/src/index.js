@@ -16,9 +16,24 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+// Normalize CLIENT_URL — strip trailing slash to prevent CORS exact-match failures
+const prodOrigin = (process.env.CLIENT_URL || '').replace(/\/$/, '');
+const allowedOrigins = [
+  prodOrigin,           // Production Vercel URL
+  'http://localhost:5173', // Vite dev server
+  'http://localhost:3000', // CRA dev server (fallback)
+].filter(Boolean);
+
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. curl, Postman, Render health checks)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS: Origin ${origin} not allowed`));
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -27,12 +42,21 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Serve uploaded images statically
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
+// Root health check (for Render's health-check pings)
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: '🟢 Raaz-e-Bharat API is live!',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/articles', require('./routes/articles'));
 app.use('/api/youtube', require('./routes/youtube'));
 
-// Health check
+// API Health check
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,

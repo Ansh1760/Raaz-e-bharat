@@ -15,7 +15,11 @@ const parseDuration = (duration) => {
   return hours * 3600 + minutes * 60 + seconds;
 };
 
-// Helper: Fetch full video details and filter out shorts (< 60 seconds)
+// Minimum duration in seconds to consider a video a "long video" (not a Short)
+// YouTube Shorts are ≤ 60s; we use 3 minutes (180s) as a strict safety threshold
+const MIN_LONG_VIDEO_SECONDS = 180;
+
+// Helper: Fetch full video details and filter out Shorts (< 3 minutes)
 const getFilteredVideos = async (videoIds, apiKey) => {
   if (!videoIds.length) return [];
 
@@ -28,7 +32,7 @@ const getFilteredVideos = async (videoIds, apiKey) => {
   });
 
   return resp.data.items
-    .filter((v) => parseDuration(v.contentDetails.duration) > 60) // Filter shorts
+    .filter((v) => parseDuration(v.contentDetails.duration) >= MIN_LONG_VIDEO_SECONDS) // Strictly exclude Shorts
     .map((v) => ({
       id: v.id,
       title: v.snippet.title,
@@ -64,19 +68,19 @@ const getVideos = async (req, res) => {
   try {
     const channelId = RAAZ_E_BHARAT_CHANNEL_ID;
 
-    // ===== Step 2: Fetch latest videos from channel =====
+    // ===== Fetch latest LONG videos from channel =====
+    // videoDuration=long tells YouTube API to pre-filter Shorts (≤ 60s) server-side
     const searchResp = await axios.get('https://www.googleapis.com/youtube/v3/search', {
       params: {
         part: 'id',
         channelId: channelId,
         type: 'video',
         order: 'date',
-        maxResults: Math.min(maxResults + 15, 50), // Overfetch to compensate for shorts filtering
+        videoDuration: 'long', // ← KEY FIX: excludes Shorts at the API level
+        maxResults: Math.min(maxResults + 20, 50), // Overfetch to compensate for any remaining edge cases
         key: apiKey,
       },
     });
-
-
 
     const videoIds = (searchResp.data.items || [])
       .map((item) => item.id?.videoId)
